@@ -1,4 +1,3 @@
-// Code your design here
 module UART_Transmitter(
   input i_tx_start,
   input [7:0] i_tx_data,
