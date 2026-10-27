@@ -16,20 +16,20 @@ module UART_Transmitter(
   reg [12:0] tick_counter;
   reg [3:0] bit_counter_data;
     
-  localparam IDLE = 0, START = 1, DATA = 2, DONE = 3;
+  localparam IDLE = 0, START = 1, DATA = 2, STOP = 3;
   
   always @(*) begin
     case (state)
       IDLE: next_state = (i_tx_start)? START: IDLE;
       START: next_state = (tick_counter == TICKS_PER_BIT - 1)? DATA: START;
-      DATA: next_state = (bit_counter_data == 7 && tick_counter == TICKS_PER_BIT - 1)? DONE: DATA;
-      DONE: 
+      DATA: next_state = (bit_counter_data == 7 && tick_counter == TICKS_PER_BIT - 1)? STOP: DATA;
+      STOP: 
         if (tick_counter == TICKS_PER_BIT - 1 && i_tx_start) begin
           next_state = START;
         end else if (tick_counter == TICKS_PER_BIT - 1 && !i_tx_start) begin
           next_state = IDLE;
         end else begin
-          next_state = DONE;
+          next_state = STOP;
         end
     endcase
   end
@@ -39,7 +39,7 @@ module UART_Transmitter(
       state <= IDLE;
     end else begin
       state <= next_state;
-      if ((state == IDLE || state == DONE) && i_tx_start) begin
+      if ((state == IDLE || state == STOP) && i_tx_start) begin
         in_data <= i_tx_data;
       end
     end
@@ -50,7 +50,7 @@ module UART_Transmitter(
       tick_counter <= 0;
       bit_counter_data <= 0;
     end else begin
-      if (state == START || state == DONE || state == DATA) begin
+      if (state == START || state == STOP || state == DATA) begin
         if (tick_counter >= TICKS_PER_BIT - 1) begin
           tick_counter <= 0;
           
@@ -78,7 +78,7 @@ module UART_Transmitter(
     end else begin
       case (state) 
       	START: out_data <= 0;
-      	DONE: out_data <= 1;
+      	STOP: out_data <= 1;
         DATA: out_data <= in_data[bit_counter_data];
         IDLE: out_data <= 1;
       endcase
@@ -89,7 +89,7 @@ module UART_Transmitter(
     if (areset) begin
       o_tx_done <= 0;
     end else begin
-      o_tx_done <= ((state == DONE) && (tick_counter == TICKS_PER_BIT - 2));
+      o_tx_done <= ((state == STOP) && (tick_counter == TICKS_PER_BIT - 2));
     end
   end
   
